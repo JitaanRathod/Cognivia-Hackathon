@@ -1,214 +1,204 @@
-import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { useAuth } from '../hooks/useAuth';
-import axios from 'axios';
-import {
-  Heart,
-  Bell,
-  TrendingUp,
-  Calendar,
-  User,
-  MessageCircle,
-  Activity,
-  AlertTriangle,
-  CheckCircle,
-  Clock
-} from 'lucide-react';
+import AppLayout from '../components/layout/AppLayout';
+import useProtectedRoute from '../hooks/useProtectedRoute';
+import { useState, useEffect } from 'react';
+import api from '../services/api';
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
-  const [healthSummary, setHealthSummary] = useState({});
-  const [notifications, setNotifications] = useState([]);
-  const [recentRecords, setRecentRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
+  useProtectedRoute();
+  const [healthScores, setHealthScores] = useState(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchHealthScores = async () => {
       try {
-        const [healthRes, notifRes, recordsRes] = await Promise.all([
-          axios.get(`${process.env.API_URL}/health`),
-          axios.get(`${process.env.API_URL}/notifications`),
-          axios.get(`${process.env.API_URL}/health`)
-        ]);
-        setHealthSummary(healthRes.data);
-        setNotifications(notifRes.data.slice(0, 5)); // Show latest 5
-        setRecentRecords(recordsRes.data.slice(0, 3)); // Show latest 3
+        const res = await api.get('/health/scores');
+        setHealthScores(res.data);
       } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
-      } finally {
-        setLoading(false);
+        console.error('Failed to fetch health scores:', error);
       }
     };
-    fetchData();
+
+    fetchHealthScores();
   }, []);
 
-  const getRiskColor = (risk) => {
-    switch (risk) {
-      case 'Urgent': return 'text-red-600 bg-red-50 border-red-200';
-      case 'Be Careful': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-      default: return 'text-green-600 bg-green-50 border-green-200';
-    }
+  const getOverallHealth = () => {
+    if (!healthScores) return { status: 'Unknown', color: 'text-gray-600', bg: 'bg-gray-100' };
+
+    const average = Object.values(healthScores).reduce((a, b) => a + b, 0) / Object.values(healthScores).length;
+    if (average >= 80) return { status: 'Excellent', color: 'text-green-600', bg: 'bg-green-100' };
+    if (average >= 60) return { status: 'Good', color: 'text-blue-600', bg: 'bg-blue-100' };
+    if (average >= 40) return { status: 'Needs Attention', color: 'text-yellow-600', bg: 'bg-yellow-100' };
+    return { status: 'Critical', color: 'text-red-600', bg: 'bg-red-100' };
   };
 
-  const getPriorityIcon = (priority) => {
-    switch (priority) {
-      case 'Urgent': return <AlertTriangle className="h-4 w-4 text-red-500" />;
-      case 'Warning': return <Clock className="h-4 w-4 text-yellow-500" />;
-      default: return <CheckCircle className="h-4 w-4 text-green-500" />;
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-pink-500"></div>
-      </div>
-    );
-  }
+  const overallHealth = getOverallHealth();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <div className="flex items-center">
-              <Heart className="h-8 w-8 text-pink-500 mr-3" />
-              <h1 className="text-2xl font-bold text-gray-900">Agentic AI PAS</h1>
+    <AppLayout>
+      <div className="max-w-7xl mx-auto p-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-800 mb-2">Welcome to HerCure</h1>
+          <p className="text-xl text-gray-600">Your comprehensive women's health dashboard</p>
+        </div>
+
+        {/* Overall Health Status */}
+        <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-2xl p-8 mb-8 shadow-lg">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold mb-2">Overall Health Status</h2>
+              <div className={`inline-block px-4 py-2 rounded-full text-lg font-semibold ${overallHealth.bg} ${overallHealth.color}`}>
+                {overallHealth.status}
+              </div>
             </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/profile" className="flex items-center text-gray-700 hover:text-pink-600">
-                <User className="h-5 w-5 mr-1" />
-                Profile
-              </Link>
-              <Link href="/notifications" className="flex items-center text-gray-700 hover:text-pink-600 relative">
-                <Bell className="h-5 w-5 mr-1" />
-                Notifications
-                {notifications.filter(n => !n.read).length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {notifications.filter(n => !n.read).length}
-                  </span>
-                )}
-              </Link>
+            <div className="text-right">
+              <p className="text-blue-100 mb-1">Last Updated</p>
+              <p className="text-lg font-semibold">{new Date().toLocaleDateString()}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Health Categories */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-xl shadow-lg border-t-4 border-blue-500 hover:shadow-xl transition-shadow duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Hormonal Health</h3>
+              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 text-xl font-bold">H</span>
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-blue-600 mb-2">
+              {healthScores?.hormonal || 'N/A'}
+            </p>
+            <p className="text-sm text-gray-600">Score out of 100</p>
+            <button
+              onClick={() => window.location.href = '/health-assessment'}
+              className="mt-4 text-blue-600 font-semibold hover:text-blue-700"
+            >
+              Update Assessment →
+            </button>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-lg border-t-4 border-purple-500 hover:shadow-xl transition-shadow duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Reproductive Health</h3>
+              <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                <span className="text-purple-600 text-xl font-bold">R</span>
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-purple-600 mb-2">
+              {healthScores?.reproductive || 'N/A'}
+            </p>
+            <p className="text-sm text-gray-600">Score out of 100</p>
+            <button
+              onClick={() => window.location.href = '/health-assessment'}
+              className="mt-4 text-purple-600 font-semibold hover:text-purple-700"
+            >
+              Update Assessment →
+            </button>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-lg border-t-4 border-pink-500 hover:shadow-xl transition-shadow duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Heart Health</h3>
+              <div className="w-12 h-12 bg-pink-100 rounded-full flex items-center justify-center">
+                <span className="text-pink-600 text-xl font-bold">♥</span>
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-pink-600 mb-2">
+              {healthScores?.heart || 'N/A'}
+            </p>
+            <p className="text-sm text-gray-600">Score out of 100</p>
+            <button
+              onClick={() => window.location.href = '/health-assessment'}
+              className="mt-4 text-pink-600 font-semibold hover:text-pink-700"
+            >
+              Update Assessment →
+            </button>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-lg border-t-4 border-teal-500 hover:shadow-xl transition-shadow duration-200">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Menstrual Health</h3>
+              <div className="w-12 h-12 bg-teal-100 rounded-full flex items-center justify-center">
+                <span className="text-teal-600 text-xl font-bold">M</span>
+              </div>
+            </div>
+            <p className="text-3xl font-bold text-teal-600 mb-2">
+              {healthScores?.menstrual || 'N/A'}
+            </p>
+            <p className="text-sm text-gray-600">Score out of 100</p>
+            <button
+              onClick={() => window.location.href = '/health-assessment'}
+              className="mt-4 text-teal-600 font-semibold hover:text-teal-700"
+            >
+              Update Assessment →
+            </button>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-200">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-white text-2xl">🤖</span>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">AI Health Assistant</h3>
+              <p className="text-gray-600 mb-4">Get personalized health insights and answers to your questions</p>
               <button
-                onClick={logout}
-                className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700"
+                onClick={() => window.location.href = '/ai-chat'}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all duration-200"
               >
-                Logout
+                Start Chat
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-200">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-r from-purple-400 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-white text-2xl">📊</span>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Health Assessment</h3>
+              <p className="text-gray-600 mb-4">Complete a comprehensive health assessment for detailed insights</p>
+              <button
+                onClick={() => window.location.href = '/health-assessment'}
+                className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-purple-600 hover:to-pink-700 transition-all duration-200"
+              >
+                Take Assessment
+              </button>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-200">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-r from-teal-400 to-teal-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-white text-2xl">📝</span>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Log Health Data</h3>
+              <p className="text-gray-600 mb-4">Record daily symptoms, mood, and other health metrics</p>
+              <button
+                onClick={() => window.location.href = '/health-input'}
+                className="bg-gradient-to-r from-teal-500 to-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:from-teal-600 hover:to-green-700 transition-all duration-200"
+              >
+                Add Entry
               </button>
             </div>
           </div>
         </div>
-      </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Section */}
-        <div className="mb-8">
-          <h2 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome back, {user?.name || 'User'}!
-          </h2>
-          <p className="text-gray-600">Here's your health overview for today.</p>
-        </div>
-
-        {/* Health Status Card */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
+        {/* AI Insight */}
+        <div className="bg-gradient-to-r from-pink-400 via-purple-500 to-blue-500 text-white p-8 rounded-2xl shadow-lg">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Current Health Status</h3>
-              <div className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getRiskColor(healthSummary.riskLevel || 'Normal')}`}>
-                <Activity className="h-4 w-4 mr-2" />
-                {healthSummary.riskLevel || 'Normal'}
-              </div>
+              <h3 className="text-2xl font-bold mb-2">AI Health Insight</h3>
+              <p className="text-lg opacity-90">
+                Regular health tracking helps identify patterns and provides better guidance for your well-being.
+              </p>
             </div>
-            <TrendingUp className="h-12 w-12 text-pink-500" />
-          </div>
-          <p className="mt-4 text-gray-600">
-            Your health data is being monitored. Stay consistent with your health tracking for better insights.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Quick Actions */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h3>
-            <div className="space-y-3">
-              <Link href="/health-input" className="block w-full bg-pink-50 hover:bg-pink-100 text-pink-700 px-4 py-3 rounded-lg text-center font-medium transition-colors">
-                Log Health Data
-              </Link>
-              <Link href="/ai-chat" className="block w-full bg-purple-50 hover:bg-purple-100 text-purple-700 px-4 py-3 rounded-lg text-center font-medium transition-colors">
-                <MessageCircle className="h-4 w-4 inline mr-2" />
-                Chat with AI Assistant
-              </Link>
-              <Link href="/calendar" className="block w-full bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-3 rounded-lg text-center font-medium transition-colors">
-                <Calendar className="h-4 w-4 inline mr-2" />
-                View Health Calendar
-              </Link>
-            </div>
-          </div>
-
-          {/* Recent Notifications */}
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4">Recent Notifications</h3>
-            {notifications.length > 0 ? (
-              <div className="space-y-3">
-                {notifications.map((notification) => (
-                  <div key={notification._id} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
-                    {getPriorityIcon(notification.priority)}
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-900">{notification.message}</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {new Date(notification.timestamp).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 text-center py-4">No recent notifications</p>
-            )}
-            <Link href="/notifications" className="block text-center text-pink-600 hover:text-pink-700 mt-4">
-              View all notifications
-            </Link>
+            <div className="text-6xl opacity-20">💡</div>
           </div>
         </div>
-
-        {/* Recent Health Records */}
-        <div className="mt-8 bg-white rounded-lg shadow-sm border p-6">
-          <h3 className="text-xl font-semibold text-gray-900 mb-4">Recent Health Records</h3>
-          {recentRecords.length > 0 ? (
-            <div className="space-y-4">
-              {recentRecords.map((record) => (
-                <div key={record._id} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900 capitalize">{record.type} Tracking</p>
-                    <p className="text-sm text-gray-500">
-                      {new Date(record.timestamp).toLocaleDateString()}
-                    </p>
-                  </div>
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
-              <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No health records yet. Start tracking your health!</p>
-              <Link href="/health-input" className="inline-block mt-4 bg-pink-600 text-white px-6 py-2 rounded-lg hover:bg-pink-700">
-                Add First Record
-              </Link>
-            </div>
-          )}
-        </div>
-      </main>
-
-      {/* Footer */}
-      <footer className="bg-white border-t mt-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center text-sm text-gray-500">
-            <p>This AI does not replace a doctor. It provides early guidance only.</p>
-          </div>
-        </div>
-      </footer>
-    </div>
+      </div>
+    </AppLayout>
   );
 }

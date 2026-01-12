@@ -1,76 +1,50 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 
 const AuthContext = createContext();
 
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const initAuth = async () => {
-      if (token) {
-        axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-        try {
-          const res = await axios.get(`${process.env.API_URL}/auth/profile`);
-          setUser(res.data);
-        } catch (error) {
-          console.error('Failed to fetch user profile:', error);
-          setToken(null);
-          localStorage.removeItem('token');
-        }
-      }
-      setLoading(false);
-    };
-    initAuth();
-  }, [token]);
+    // On refresh, just check token presence
+    const token =
+      typeof window !== 'undefined'
+        ? localStorage.getItem('token')
+        : null;
 
-  const login = async (email, password, rememberMe) => {
-    try {
-      const res = await axios.post(`${process.env.API_URL}/auth/login`, { email, password, rememberMe });
-      const newToken = res.data.token;
-      setToken(newToken);
-      localStorage.setItem('token', newToken);
-      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
-
-      // Fetch user profile after login
-      const profileRes = await axios.get(`${process.env.API_URL}/auth/profile`);
-      setUser(profileRes.data);
-    } catch (error) {
-      throw error;
+    if (token) {
+      // We trust backend to validate token on API calls
+      setUser({ loggedIn: true });
     }
+
+    setLoading(false);
+  }, []);
+
+  const login = async (email, password) => {
+    const res = await api.post('/auth/login', { email, password });
+
+    // Backend returns token
+    localStorage.setItem('token', res.data.token);
+
+    // Minimal user state (backend is source of truth)
+    setUser({ loggedIn: true });
   };
 
   const logout = () => {
-    setToken(null);
-    setUser(null);
     localStorage.removeItem('token');
-    delete axios.defaults.headers.common['Authorization'];
-  };
-
-  const updateProfile = async (profileData) => {
-    try {
-      const res = await axios.put(`${process.env.API_URL}/auth/profile`, profileData);
-      setUser(res.data);
-      return res.data;
-    } catch (error) {
-      throw error;
-    }
+    setUser(null);
+    window.location.href = '/login';
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      token,
-      loading,
-      login,
-      logout,
-      updateProfile
-    }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
-};
+}
 
-export const useAuth = () => useContext(AuthContext);
+export function useAuth() {
+  return useContext(AuthContext);
+}
