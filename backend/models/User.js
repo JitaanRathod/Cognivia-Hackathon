@@ -7,6 +7,12 @@ const userSchema = new mongoose.Schema(
     password: { type: String, required: true },
     name: { type: String },
     age: { type: Number },
+    dob: { type: Date },
+    phone: { type: String },
+    emergencyContact: { type: String },
+    height: { type: Number },
+    weight: { type: Number },
+    bloodType: { type: String },
     location: { type: String },
 
     pregnancyStatus: {

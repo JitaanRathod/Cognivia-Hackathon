@@ -4,7 +4,7 @@ const healthRecordSchema = new mongoose.Schema({
   userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   type: {
     type: String,
-    enum: ['Period', 'Heart', 'Pregnancy', 'Lifestyle'],
+    enum: ['Period', 'Heart', 'Pregnancy', 'Lifestyle', 'Assessment'],
     required: true
   },
   data: { type: mongoose.Schema.Types.Mixed },

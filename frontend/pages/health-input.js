@@ -13,6 +13,7 @@ export default function HealthInput() {
     notes: ''
   });
   const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState(null); // { type: 'success'|'error', message }
 
   const moodOptions = ['Excellent', 'Good', 'Neutral', 'Poor', 'Terrible'];
   const energyOptions = ['High', 'Moderate', 'Low', 'Very Low'];
@@ -31,7 +32,7 @@ export default function HealthInput() {
     setLoading(true);
     try {
       await api.post('/health/lifestyle', data);
-      alert('Health data saved successfully!');
+      setStatus({ type: 'success', message: 'Health data saved successfully!' });
       setData({
         sleepHours: '',
         mood: '',
@@ -40,9 +41,10 @@ export default function HealthInput() {
         notes: ''
       });
     } catch (error) {
-      alert('Failed to save health data. Please try again.');
+      setStatus({ type: 'error', message: 'Failed to save health data. Please try again.' });
     } finally {
       setLoading(false);
+      setTimeout(() => setStatus(null), 4000);
     }
   };
 
@@ -55,6 +57,11 @@ export default function HealthInput() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-lg p-8">
+          {status && (
+            <div className={`mb-6 p-4 rounded ${status.type === 'success' ? 'bg-secondary text-navy' : 'bg-red-100 text-red-700'}`}>
+              {status.message}
+            </div>
+          )}
           <div className="grid md:grid-cols-2 gap-8">
             {/* Sleep Hours */}
             <div className="animate-slide-up delay-200">
@@ -95,8 +102,8 @@ export default function HealthInput() {
                 onChange={e => setData({...data, energy: e.target.value})}
               >
                 <option value="">Select energy level</option>
-                {energyOptions.map(energy => (
-                  <option>key={energy} value={energy}</option>
+                {energyOptions.map((energy) => (
+                  <option key={energy} value={energy}>{energy}</option>
                 ))}
               </select>
             </div>

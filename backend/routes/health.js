@@ -82,13 +82,34 @@ router.post('/pregnancy', auth, async (req, res) => {
   res.json({ message: 'Pregnancy data saved' });
 });
 
-// Submit lifestyle data
+// Submit lifestyle data (daily health log)
 router.post('/lifestyle', auth, async (req, res) => {
-  const { sleepHours, foodHabits, physicalActivity } = req.body;
-  const data = { sleepHours, foodHabits, physicalActivity };
+  const { sleepHours, mood, energy, symptoms, notes, foodHabits, physicalActivity } = req.body;
+  const data = { sleepHours, mood, energy, symptoms, notes, foodHabits, physicalActivity };
   const record = new HealthRecord({ userId: req.user.id, type: 'Lifestyle', data });
   await record.save();
+
+  // Save symptoms as separate records for tracking
+  if (Array.isArray(symptoms) && symptoms.length > 0) {
+    const symptomRecord = new Symptom({ userId: req.user.id, category: 'Lifestyle', symptoms, severity: 'Moderate' });
+    await symptomRecord.save();
+  }
+
   res.json({ message: 'Lifestyle data saved' });
+});
+
+// Submit assessment (Health Assessment)
+router.post('/assessment', auth, async (req, res) => {
+  const { responses, scores } = req.body;
+  const record = new HealthRecord({ userId: req.user.id, type: 'Assessment', data: { responses, scores } });
+  await record.save();
+  res.json({ message: 'Assessment saved', id: record._id });
+});
+
+// Get latest assessment
+router.get('/assessment', auth, async (req, res) => {
+  const assessment = await HealthRecord.findOne({ userId: req.user.id, type: 'Assessment' }).sort({ timestamp: -1 });
+  res.json(assessment || {});
 });
 
 // Get symptoms

@@ -16,8 +16,12 @@ export default function Notifications() {
       <div className="max-w-4xl mx-auto p-6">
         <h1 className="text-2xl font-bold mb-4">Notifications</h1>
         {list.map(n => (
-          <div key={n._id} className="bg-white p-4 rounded mb-3 shadow">
-            <p>{n.message}</p>
+          <div key={n.id} style={{ borderLeft: `6px solid ${n.color}` }} className="bg-white p-4 rounded mb-3 shadow flex justify-between items-start">
+            <div>
+              <p className="font-medium text-navy">{n.message}</p>
+              <p className="text-xs text-gray-500 mt-1">{new Date(n.timestamp).toLocaleString()}</p>
+            </div>
+            <div className="text-sm text-gray-400">{n.priority}</div>
           </div>
         ))}
       </div>

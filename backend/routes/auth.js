@@ -42,6 +42,28 @@ router.post(
   }
 );
 
+// Update profile
+const auth = require('../middleware/auth');
+router.put('/profile', auth, async (req, res) => {
+  try {
+    const updates = (({ name, age, dob, phone, emergencyContact, height, weight, bloodType, location, pregnancyStatus, knownConditions }) => ({ name, age, dob, phone, emergencyContact, height, weight, bloodType, location, pregnancyStatus, knownConditions }))(req.body);
+    const user = await User.findByIdAndUpdate(req.user.id, { $set: updates }, { new: true });
+    res.json({ message: 'Profile updated', user });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to update profile' });
+  }
+});
+
+// Get current user
+router.get('/me', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('-password -__v');
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch user' });
+  }
+});
+
 /**
  * LOGIN
  */

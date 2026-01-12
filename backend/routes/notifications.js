@@ -17,16 +17,40 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Get notifications
+// Get notifications (adds color metadata for frontend)
 router.get('/', auth, async (req, res) => {
   const notifications = await Notification.find({ userId: req.user.id }).sort({ timestamp: -1 });
-  res.json(notifications);
+
+  const enhanced = notifications.map(n => {
+    let color = '#5B8DEF'; // primary
+    if (n.priority === 'Warning') color = '#BFD7FF';
+    if (n.priority === 'Urgent') color = '#FF6B6B'; // urgent uses a warm red for visibility
+
+    return {
+      id: n._id,
+      type: n.type,
+      priority: n.priority,
+      message: n.message,
+      timestamp: n.timestamp,
+      read: n.read,
+      color
+    };
+  });
+
+  res.json(enhanced);
 });
 
 // Mark as read
 router.put('/:id/read', auth, async (req, res) => {
   await Notification.findByIdAndUpdate(req.params.id, { read: true });
   res.json({ message: 'Marked as read' });
+});
+
+// Send a notification (developer/test endpoint)
+router.post('/send', auth, async (req, res) => {
+  const { type, message, priority } = req.body;
+  const note = await sendNotification(req.user.id, type || 'Alert', message || 'Test message', priority || 'Normal');
+  res.json(note);
 });
 
 // Send notification (internal function)
